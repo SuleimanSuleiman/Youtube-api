@@ -4,6 +4,10 @@ const {
     handleMessageErrorForVedio
 } = require('../utils/handleErrors')
 const fs = require('fs')
+const path = require('path')
+const {
+    ObjectId
+} = require('mongodb')
 
 module.exports.AddVedio = async (req, res, next) => {
     try {
@@ -28,7 +32,82 @@ module.exports.AddVedio = async (req, res, next) => {
     }
 }
 
+module.exports.showVedio = async (req, res, next) => {
+    try {
+        const theVedio = await Vedio.aggregate([{
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "userId"
+                }
+            },
+            {
+                $set: {
+                    userId: {
+                        $arrayElemAt: ["$userId", 0]
+                    },
+                }
+            },
+            {
+                $addFields: {
+                    userIdStr: {
+                        $toString: "$userId._id"
+                    },
+                }
+            },
+            {
+                $addFields: {
+                    vedioNamePath: {
+                        $concat: ["upload/", "$userIdStr", "/", "$vedioName"]
+                    },
+                    ImageCoverPath: {
+                        $concat: ["upload/", "$userIdStr", "/", "$ImageCoverName"]
+                    }
+                }
+            },
+            {
+                $project: {
+                    __v: 0,
+                    userIdStr: 0,
+                    userId: {
+                        vedios: 0,
+                        password: 0,
+                        verify: 0,
+                        createdAt: 0,
+                        updatedAt: 0,
+                        __v: 0,
+                    }
+                }
+            }
+        ])
+        if (!theVedio) next(handleError(404, `not found this vedio `))
+        console.log(theVedio.coverImagePath)
+        res.json(theVedio)
+    } catch (err) {
+        next(handleError(400))
+    }
+}
 
+module.exports.deleteVedio = async (req, res, next) => {
+    try {
+        const theVedio = await Vedio.findOneAndDelete({
+            _id: {
+                $eq: req.params.VedioId
+            },
+            userId: {
+                $eq: req.user._id
+            }
+        }, {
+            new: true
+        })
+        if (!theVedio) next(handleError(404, 'not found this vedio'))
+        await deleteVedioFun(theVedio.vedioNamePath, theVedio.coverImagePath)
+        res.json(theVedio)
+    } catch (err) {
+        next(handleError(400, err.message))
+    }
+}
 
 function NameFun(files) {
     const Names = {
@@ -44,4 +123,27 @@ function NameFun(files) {
         }
     });
     return Names
+}
+
+async function deleteVedioFun(pathImage, pathVedio) {
+    pathImage = await path.join('./', pathImage)
+    pathVedio = await path.join('./', pathVedio)
+    fs.access(pathImage, (error) => {
+        if (!error) {
+            fs.unlink(pathImage, err => {
+                if (err) {
+                    console.log('an error happened')
+                } else {
+                    console.log('delete cover from server')
+                }
+            })
+            fs.unlink(pathVedio, err => {
+                if (err) {
+                    console.log('an error happened')
+                } else {
+                    console.log('delete vedio from server')
+                }
+            })
+        }
+    })
 }

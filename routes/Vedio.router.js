@@ -19,5 +19,9 @@ const dest1 = multer({
 
 
 router.post('/addVedio', [passport.authenticate('jwt'), dest1.array('file')], VedioController.AddVedio)
+router.get('/showVedio', VedioController.showVedio)
+router.delete('/deleteVedio/:VedioId',
+passport.authenticate('jwt'),
+VedioController.deleteVedio)
 
 module.exports = router
