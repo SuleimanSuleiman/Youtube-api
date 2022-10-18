@@ -10,6 +10,7 @@ const { ObjectId } = require("mongodb");
 
 module.exports.CreateUser = async (req, res, next) => {
   try {
+    console.log(req.body)
     let newUser = await User(req.body);
     await newUser.save();
     const the_token = GenerateToken();
@@ -126,6 +127,7 @@ module.exports.logout = async (req, res, next) => {
 
 module.exports.deleteUser = async (req, res, next) => {
   try {
+    console.log(req.body,req.query)
     const comparePassword = await bcrypt.compare(
       req.body.password,
       req.user.password
@@ -160,6 +162,7 @@ module.exports.deleteUser = async (req, res, next) => {
 
 module.exports.subscribers = async (req, res, next) => {
   try {
+    console.log(req.body,req.query)
     await sunAndunsub(req,req.params.id, true, next);
     res.status(200).json({
       stats: "successful",

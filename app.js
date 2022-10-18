@@ -90,6 +90,8 @@ app.get(
   }
 );
 
+
+
 app.use((err, req, res, next) => {
   const status = err.status || 500;
   const errMessage = err.message || "an error happend";
@@ -99,6 +101,8 @@ app.use((err, req, res, next) => {
     stack: err.stack,
   });
 });
+
+
 
 module.exports = {
   app,

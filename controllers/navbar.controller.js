@@ -65,11 +65,10 @@ module.exports.homePage = async (req, res, next) => {
 
 module.exports.trend = async (req, res, next) => {
   try {
-    let x = new Date();
 
+    let x = new Date();
     let z = x.getMonth() - 1;
     let b = x.setMonth(z);
-    console.log(new Date(b));
     theVideo = await Vedio.find({
       createdAt: {
         $gte: new Date(b),
@@ -85,11 +84,9 @@ module.exports.trend = async (req, res, next) => {
 
 module.exports.randomVideo = async (req, res, next) => {
   try {
-    let limit = parseInt(50);
-    if (req.query.limit) limit = parseInt(req.query.limit);
     const randomVideos = await Vedio.aggregate([
       {
-        $sample: { size: limit },
+        $sample: { size: 50 },
       },
     ]);
     res.status(200).json(randomVideos);
@@ -110,5 +107,23 @@ module.exports.sub = async (req, res, next) => {
     res.json(videosChannel);
   } catch (err) {
     res.json(err);
+  }
+};
+
+module.exports.viewVideo = async (req, res, next) => {
+  try {
+    const theVideo = await Vedio.findOneAndUpdate(
+      { _id: ObjectId(req.params.videoId) },
+      {
+        $inc: {
+          views: 1,
+        },
+      },
+      { new: true }
+    );
+    if (!theVideo) next(handleError(404, "not found this video !!"));
+    res.status(200).json({ success: true, views: theVideo.views });
+  } catch (err) {
+    next(handleError(400, err.message, err.stack));
   }
 };

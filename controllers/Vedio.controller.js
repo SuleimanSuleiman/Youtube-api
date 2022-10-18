@@ -10,6 +10,7 @@ const UsersModel = require("../models/Users.model");
 
 module.exports.AddVedio = async (req, res, next) => {
   try {
+    await filterRequest(req, res, next);
     const Names = await NameFun(req.files);
     const newVedio = new Vedio({
       title: req.body.title,
@@ -17,14 +18,14 @@ module.exports.AddVedio = async (req, res, next) => {
       vedioName: Names.vedioName,
       ImageCoverName: Names.imageName,
       category: req.body.category,
-      views: req.body.views
+      views: req.body.views,
     });
     await newVedio.save();
     await UsersModel.findByIdAndUpdate(req.user._id, {
       $push: {
-        vedios: newVedio._id
-      }
-    })
+        vedios: newVedio._id,
+      },
+    });
     res.json({
       newVedio,
       pathImage: newVedio.coverImagePath,
@@ -32,6 +33,7 @@ module.exports.AddVedio = async (req, res, next) => {
     });
     res.json(newVedio);
   } catch (err) {
+    console.log(err)
     const handleErr = handleMessageErrorForVedio(err);
     next(handleError(400, handleErr));
   }
@@ -40,6 +42,12 @@ module.exports.AddVedio = async (req, res, next) => {
 module.exports.showVedio = async (req, res, next) => {
   try {
     const theVedio = await Vedio.aggregate([
+      {
+        $match: {
+          userId: ObjectId(req.query.userId),
+          _id: ObjectId(req.query.vedioName)
+        }
+      },
       {
         $lookup: {
           from: "users",
@@ -87,8 +95,7 @@ module.exports.showVedio = async (req, res, next) => {
         },
       },
     ]);
-    if (!theVedio) next(handleError(404, `not found this vedio `));
-    console.log(theVedio.coverImagePath);
+    if (theVedio[0] == null) next(handleError(404, `not found this vedio `));
     res.json(theVedio);
   } catch (err) {
     next(handleError(400));
@@ -118,16 +125,58 @@ module.exports.deleteVedio = async (req, res, next) => {
   }
 };
 
+module.exports.updateCoverVedio = async (req, res, next) => {
+  try {
+    const theVideo = await Vedio.findOne({
+      _id: req.params.videoId,
+      userId: req.user._id,
+    });
+    if (!theVideo)
+      next(handleError(400, "not found this video in database !!! "));
+    console.log(theVideo);
+    await deleteCoverImageFromUpload(theVideo.userId, theVideo.ImageCoverName);
+    let UpdateVideo = await Vedio.findByIdAndUpdate(
+      req.params.videoId,
+      {
+        $set: {
+          ImageCoverName: req.file.filename,
+        },
+      },
+      {
+        new: true,
+      }
+    );
+    res.status(200).json({ success: true, theVideo: UpdateVideo });
+  } catch (err) {
+    let path = `./upload/${req.user._id}/${req.file.filename}`;
+    fs.access(path, (err) => {
+      if (!err) {
+        fs.unlink(path, (error) => {
+          if (!error) {
+            console.log("delete file");
+          }
+        });
+      }
+    });
+    next(handleError(400, err.message, err.stack));
+  }
+};
+
 module.exports.updateVedio = async (req, res, next) => {
   try {
-      let theVideo = await Vedio.findById(req.params.VideoId);
-      if (req.file.mimetype.includes(''))
-        res.json({
-          theFile: req.file,
-          theVideo,
-        });
+    let UpdataVideo = await Vedio.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      {
+        $set: {
+          title: req.body.title,
+          category: req.body.category,
+        },
+      },
+      { new: true }
+    );
+    res.status(200).json(UpdataVideo);
   } catch (err) {
-    res.json(err);
+    next(handleError(400, err.message, err.stack));
   }
 };
 
@@ -168,4 +217,47 @@ async function deleteVedioFun(pathImage, pathVedio) {
       });
     }
   });
+}
+
+async function deleteCoverImageFromUpload(userId, cover) {
+  let path = `./upload/${userId}/${cover}`;
+  fs.access(path, (error) => {
+    if (!error) {
+      fs.unlink(path, (error) => {
+        if (!error) console.log(`delete file => ${path}`);
+        else {
+          console.log(`can not delete file => ${path}`);
+        }
+      });
+    }
+  });
+}
+
+function filterRequest(req, res, next) {
+  if (req.files.length === 2) {
+    req.files.forEach((e) => {
+      if (!(e.mimetype.includes('image') || e.mimetype.includes('video'))) {
+        next(handleError(400,'please input image, video file'))
+      }
+  })
+  }else next(handleError(400, "please input image, video file"));
+  if (Object.keys(req.body).length !== 3) {
+    let list = {
+      title: new String(),
+      category: new String(),
+      views: new Number(),
+    };
+    const ls = Object.getOwnPropertyNames(list);
+    Object.entries(req.body).forEach(([key, value]) => {
+      if (ls.includes(key)) {
+        list[key] = value;
+        console.log(key + `=>` + value + "\n");
+      }
+    });
+    console.log(`the body before ${JSON.stringify(req.body)}`);
+    req.body = list;
+    console.log(`the body after ${JSON.stringify(req.body)}`);
+    console.log(`the list is ${JSON.stringify(list)}`);
+  }
+  req.query = null;
 }
