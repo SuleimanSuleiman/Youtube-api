@@ -19,6 +19,7 @@ module.exports.AddVedio = async (req, res, next) => {
       ImageCoverName: Names.imageName,
       category: req.body.category,
       views: req.body.views,
+      tags: req.body.tags
     });
     await newVedio.save();
     await UsersModel.findByIdAndUpdate(req.user._id, {
@@ -31,9 +32,8 @@ module.exports.AddVedio = async (req, res, next) => {
       pathImage: newVedio.coverImagePath,
       pathVedio: newVedio.vedioNamePath,
     });
-    res.json(newVedio);
   } catch (err) {
-    console.log(err)
+    console.log(err);
     const handleErr = handleMessageErrorForVedio(err);
     next(handleError(400, handleErr));
   }
@@ -45,8 +45,8 @@ module.exports.showVedio = async (req, res, next) => {
       {
         $match: {
           userId: ObjectId(req.query.userId),
-          _id: ObjectId(req.query.vedioName)
-        }
+          _id: ObjectId(req.query.vedioName),
+        },
       },
       {
         $lookup: {
@@ -236,16 +236,17 @@ async function deleteCoverImageFromUpload(userId, cover) {
 function filterRequest(req, res, next) {
   if (req.files.length === 2) {
     req.files.forEach((e) => {
-      if (!(e.mimetype.includes('image') || e.mimetype.includes('video'))) {
-        next(handleError(400,'please input image, video file'))
+      if (!(e.mimetype.includes("image") || e.mimetype.includes("video"))) {
+        next(handleError(400, "please input image, video file"));
       }
-  })
-  }else next(handleError(400, "please input image, video file"));
-  if (Object.keys(req.body).length !== 3) {
+    });
+  } else next(handleError(400, "please input image, video file"));
+  if (Object.keys(req.body).length !== 4) {
     let list = {
       title: new String(),
       category: new String(),
       views: new Number(),
+      tags: new Array(),
     };
     const ls = Object.getOwnPropertyNames(list);
     Object.entries(req.body).forEach(([key, value]) => {
@@ -254,10 +255,7 @@ function filterRequest(req, res, next) {
         console.log(key + `=>` + value + "\n");
       }
     });
-    console.log(`the body before ${JSON.stringify(req.body)}`);
     req.body = list;
-    console.log(`the body after ${JSON.stringify(req.body)}`);
-    console.log(`the list is ${JSON.stringify(list)}`);
   }
   req.query = null;
 }

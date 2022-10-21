@@ -10,7 +10,6 @@ const { ObjectId } = require("mongodb");
 
 module.exports.CreateUser = async (req, res, next) => {
   try {
-    console.log(req.body)
     let newUser = await User(req.body);
     await newUser.save();
     const the_token = GenerateToken();

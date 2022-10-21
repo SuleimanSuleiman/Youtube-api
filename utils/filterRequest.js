@@ -113,3 +113,13 @@ module.exports.filterupdateVideo = async (req, res, next) => {
   req.query = null
   next()
 }
+
+module.exports.filterGetVideoByTags = async (req, res, next) => {
+  let array = req.query.tags.split(",");
+  array.filter((e) => {
+    return e.toLowerCase().includes("tags")
+  })
+  req.query = array
+  req.body = null
+  next();
+}

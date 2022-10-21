@@ -6,7 +6,7 @@ const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const UserRouter = require("./routes/User.router");
 const VedioRouter = require("./routes/Vedio.router");
-const HomeUser = require("./routes/navbar.router");
+const HomeUser = require("./routes/other.router");
 const passport = require("passport");
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
@@ -102,7 +102,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-
+app.use((req, res) => {
+  if (req.accepts('json')) {
+      res.status(400).json({
+        success: false,
+        message: "not found this page",
+      });
+  }
+})
 
 module.exports = {
   app,
